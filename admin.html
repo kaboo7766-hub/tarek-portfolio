@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة إدارة الموقع | طارق محسن</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <header class="admin-header"><h1>لوحة إدارة الموقع</h1><a href="index.html">عرض الموقع</a></header>
+  <main class="admin-container">
+    <section id="loginSection" class="panel">
+      <h2>تسجيل دخول المدير</h2>
+      <form id="loginForm">
+        <label for="email">البريد الإلكتروني</label><input id="email" type="email" required autocomplete="username">
+        <label for="password">كلمة المرور</label><input id="password" type="password" required autocomplete="current-password">
+        <button type="submit">دخول</button>
+      </form>
+      <p id="loginMessage" role="status" aria-live="polite"></p>
+    </section>
+
+    <section id="dashboardSection" class="panel" hidden>
+      <div class="dashboard-heading"><h2>إدارة المشاريع</h2><button id="logoutButton" type="button" class="neutral-button">تسجيل الخروج</button></div>
+      <h3 id="formTitle">إضافة مشروع جديد</h3>
+      <form id="projectForm">
+        <input type="hidden" id="projectId">
+        <label for="titleAr">اسم المشروع بالعربي</label><input id="titleAr" required maxlength="120">
+        <label for="titleEn">اسم المشروع بالإنجليزي</label><input id="titleEn" maxlength="120">
+        <label for="descriptionAr">وصف المشروع بالعربي</label><textarea id="descriptionAr" maxlength="1500"></textarea>
+        <label for="descriptionEn">وصف المشروع بالإنجليزي</label><textarea id="descriptionEn" maxlength="1500"></textarea>
+        <label for="imageUrl">رابط صورة المشروع (اختياري)</label><input id="imageUrl" type="url" placeholder="https://example.com/image.jpg">
+        <label for="liveUrl">رابط الموقع المباشر</label><input id="liveUrl" type="url" placeholder="https://example.com">
+        <label for="githubUrl">رابط GitHub</label><input id="githubUrl" type="url" placeholder="https://github.com/...">
+        <label for="order">ترتيب العرض</label><input id="order" type="number" value="1" min="0" step="1">
+        <label class="checkbox-label"><input id="featured" type="checkbox" checked> نشر المشروع على الصفحة الرئيسية</label>
+        <div class="form-actions"><button type="submit" id="saveButton">حفظ المشروع</button><button type="button" id="cancelEditButton" class="neutral-button" hidden>إلغاء التعديل</button></div>
+      </form>
+      <p id="adminMessage" role="status" aria-live="polite"></p>
+      <hr>
+      <h3>المشاريع الحالية</h3>
+      <div id="adminProjects" aria-live="polite"></div>
+    </section>
+  </main>
+  <script type="module" src="admin.js"></script>
+</body>
+</html>
