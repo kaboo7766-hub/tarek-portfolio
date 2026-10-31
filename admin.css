@@ -1,1 +1,304 @@
-*{box-sizing:border-box}body{margin:0;background:#0b1120;color:#f4f7fb;font-family:Tahoma,Arial,sans-serif;line-height:1.7}.admin-header{background:#151f32;padding:18px 6%;display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap}.admin-header h1{font-size:23px}.admin-header a{color:#38bdf8;text-decoration:none}.admin-container{max-width:850px;padding:30px 15px;margin:auto}.panel{background:#151f32;padding:25px;border-radius:15px;border:1px solid #26364d;margin-bottom:25px}form{display:grid;gap:11px}label{font-weight:bold}input,textarea{width:100%;padding:12px;border:1px solid #34465e;border-radius:8px;background:#0b1120;color:white;font:inherit}textarea{min-height:85px;resize:vertical}button{padding:11px 17px;border:0;border-radius:8px;background:#38bdf8;color:#062033;font-weight:bold;cursor:pointer;font:inherit}button:hover{opacity:.86}button:disabled{opacity:.55;cursor:wait}.dashboard-heading{display:flex;justify-content:space-between;gap:15px;align-items:center;flex-wrap:wrap}.checkbox-label{display:flex;gap:10px;align-items:center}.checkbox-label input{width:auto}.form-actions{display:flex;gap:10px;flex-wrap:wrap}.neutral-button{background:#334155;color:#fff}.admin-project{padding:15px;border:1px solid #34465e;border-radius:10px;margin-top:12px;overflow-wrap:anywhere}.admin-project button{margin:8px 5px 0 0}.delete-button{background:#ef4444;color:white}#loginMessage,#adminMessage{color:#7dd3fc;min-height:1.5em}hr{border:0;border-top:1px solid #34465e;margin:25px 0}[hidden]{display:none!important}@media(max-width:500px){.panel{padding:16px}.admin-header h1{font-size:19px}}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #0b1120;
+  color: #f4f7fb;
+  font-family: Tahoma, Arial, sans-serif;
+  line-height: 1.7;
+}
+
+/* رأس لوحة الإدارة */
+.admin-header {
+  background: #151f32;
+  padding: 18px 6%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #26364d;
+}
+
+.admin-header h1 {
+  font-size: 23px;
+  margin: 0;
+}
+
+.admin-header a {
+  color: #38bdf8;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.admin-header a:hover {
+  text-decoration: underline;
+}
+
+/* الحاوية الرئيسية */
+.admin-container {
+  max-width: 850px;
+  padding: 30px 15px;
+  margin: auto;
+}
+
+/* البطاقات */
+.panel {
+  background: #151f32;
+  padding: 25px;
+  border-radius: 15px;
+  border: 1px solid #26364d;
+  margin-bottom: 25px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+h2,
+h3 {
+  margin-top: 0;
+}
+
+h2 {
+  font-size: 22px;
+}
+
+h3 {
+  font-size: 18px;
+  margin-bottom: 15px;
+}
+
+/* النماذج */
+form {
+  display: grid;
+  gap: 11px;
+}
+
+label {
+  font-weight: bold;
+  display: block;
+}
+
+input,
+textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #34465e;
+  border-radius: 8px;
+  background: #0b1120;
+  color: white;
+  font: inherit;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+input:focus,
+textarea:focus {
+  border-color: #38bdf8;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #94a3b8;
+}
+
+textarea {
+  min-height: 85px;
+  resize: vertical;
+}
+
+/* الأزرار العامة */
+button {
+  padding: 11px 17px;
+  border: 0;
+  border-radius: 8px;
+  background: #38bdf8;
+  color: #062033;
+  font-weight: bold;
+  cursor: pointer;
+  font: inherit;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+button:hover {
+  opacity: 0.86;
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+/* زر تسجيل الدخول بجوجل */
+#googleLoginButton {
+  width: 100%;
+  margin-top: 15px;
+  padding: 14px;
+  background: #ffffff;
+  color: #202124;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+#googleLoginButton:hover {
+  background: #f1f3f4;
+  opacity: 1;
+}
+
+#googleLoginButton:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* بيانات المدير */
+#adminEmail {
+  color: #38bdf8;
+  overflow-wrap: anywhere;
+  margin: 10px 0 20px;
+}
+
+/* عنوان لوحة التحكم */
+.dashboard-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.dashboard-heading h2 {
+  margin: 0;
+}
+
+/* خيارات النشر */
+.checkbox-label {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.checkbox-label input {
+  width: auto;
+  accent-color: #38bdf8;
+}
+
+/* أزرار النموذج */
+.form-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.neutral-button {
+  background: #334155;
+  color: #fff;
+}
+
+.neutral-button:hover {
+  background: #475569;
+  opacity: 1;
+}
+
+/* قائمة المشاريع */
+.admin-project {
+  padding: 15px;
+  border: 1px solid #34465e;
+  border-radius: 10px;
+  margin-top: 12px;
+  overflow-wrap: anywhere;
+  background: #0f192b;
+}
+
+.admin-project h4 {
+  margin: 0 0 8px;
+  font-size: 17px;
+}
+
+.admin-project p {
+  color: #cbd5e1;
+  margin: 8px 0;
+}
+
+.admin-project button {
+  margin: 8px 5px 0 0;
+}
+
+/* زر الحذف */
+.delete-button {
+  background: #ef4444;
+  color: white;
+}
+
+.delete-button:hover {
+  background: #dc2626;
+  opacity: 1;
+}
+
+/* رسائل النظام */
+#loginMessage,
+#adminMessage {
+  color: #7dd3fc;
+  min-height: 1.5em;
+  overflow-wrap: anywhere;
+  margin-top: 12px;
+}
+
+/* الفواصل */
+hr {
+  border: 0;
+  border-top: 1px solid #34465e;
+  margin: 25px 0;
+}
+
+/* إخفاء العناصر */
+[hidden] {
+  display: none !important;
+}
+
+/* تحسين عرض الهاتف */
+@media (max-width: 500px) {
+  .panel {
+    padding: 16px;
+  }
+
+  .admin-header {
+    padding: 15px;
+  }
+
+  .admin-header h1 {
+    font-size: 19px;
+  }
+
+  .admin-container {
+    padding: 18px 10px;
+  }
+
+  .dashboard-heading {
+    align-items: stretch;
+  }
+
+  .dashboard-heading button {
+    width: 100%;
+  }
+
+  .form-actions button {
+    width: 100%;
+  }
+
+  .admin-project button {
+    width: 100%;
+    margin: 8px 0 0;
+  }
+}
