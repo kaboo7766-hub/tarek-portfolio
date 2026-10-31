@@ -1,14 +1,20 @@
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
     function isOwner() {
       return request.auth != null
-        && request.auth.uid == "TUcfHqJTVdVbqur8v7riZfDkJ432";
+        && request.auth.token.email == "ضع-بريدك-هنا@gmail.com"
+        && request.auth.token.email_verified == true;
     }
+
     match /projects/{projectId} {
       allow read: if true;
       allow create, update, delete: if isOwner();
     }
+
     match /{document=**} {
       allow read, write: if false;
     }
