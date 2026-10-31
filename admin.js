@@ -2,7 +2,8 @@
 import { auth, db } from "./firebase-config.js";
 
 import {
-  signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
   onAuthStateChanged,
   signOut
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
@@ -19,52 +20,76 @@ import {
   orderBy
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 
-// UID الخاص بحساب المدير
-const OWNER_UID = "TUcfHqJTVdVbqur8v7riZfDkJ432";
+// ضع بريد حساب Google الخاص بالمدير هنا
+const OWNER_EMAIL = "ضع-بريدك-هنا@gmail.com";
+
+const provider = new GoogleAuthProvider();
+provider.setCustomParameters({
+  prompt: "select_account"
+});
 
 // عناصر الصفحة
 const loginSection = document.getElementById("loginSection");
 const dashboardSection = document.getElementById("dashboardSection");
-const loginForm = document.getElementById("loginForm");
-const projectForm = document.getElementById("projectForm");
+const googleLoginButton = document.getElementById("googleLoginButton");
 
+const projectForm = document.getElementById("projectForm");
 const loginMessage = document.getElementById("loginMessage");
 const adminMessage = document.getElementById("adminMessage");
 const adminProjects = document.getElementById("adminProjects");
 
-const loginButton = loginForm.querySelector('button[type="submit"]');
 const saveButton = document.getElementById("saveButton");
+const cancelEditButton = document.getElementById("cancelEditButton");
 
 let currentUser = null;
 
-// رسائل الخطأ بالعربي
-function getAuthError(error) {
-  const errors = {
-    "auth/invalid-email": "البريد الإلكتروني غير صحيح.",
-    "auth/user-not-found": "هذا البريد غير مسجل في Firebase.",
-    "auth/wrong-password": "كلمة المرور غير صحيحة.",
-    "auth/invalid-credential": "بيانات الدخول غير صحيحة. راجع البريد وكلمة المرور.",
-    "auth/too-many-requests": "محاولات كثيرة. انتظر قليلًا ثم حاول مرة أخرى.",
-    "auth/user-disabled": "هذا الحساب معطل.",
-    "auth/operation-not-allowed": "تسجيل الدخول بالبريد وكلمة المرور غير مفعل في Firebase.",
-    "auth/network-request-failed": "تعذر الاتصال بالإنترنت.",
-    "auth/unauthorized-domain": "رابط الموقع غير مضاف إلى Authorized domains في Firebase."
-  };
-
-  return errors[error.code] || `حدث خطأ: ${error.code || error.message}`;
-}
-
+// رسائل الحالة
 function showMessage(element, message, type = "info") {
   element.textContent = message;
+
   element.style.color =
     type === "error" ? "#ff6464" :
-    type === "success" ? "#4ade80" : "#38bdf8";
+    type === "success" ? "#4ade80" :
+    "#38bdf8";
 }
 
-function isOwner() {
-  return currentUser && currentUser.uid === OWNER_UID;
+// رسائل أخطاء Google
+function getAuthError(error) {
+  const errors = {
+    "auth/popup-closed-by-user":
+      "أغلقت نافذة تسجيل الدخول قبل إكمال العملية.",
+
+    "auth/popup-blocked":
+      "المتصفح منع نافذة تسجيل الدخول. اسمح بالنوافذ المنبثقة.",
+
+    "auth/unauthorized-domain":
+      "رابط الموقع غير مضاف إلى Authorized domains في Firebase.",
+
+    "auth/operation-not-allowed":
+      "تسجيل الدخول بجوجل غير مفعل في Firebase.",
+
+    "auth/network-request-failed":
+      "تعذر الاتصال بالإنترنت.",
+
+    "auth/account-exists-with-different-credential":
+      "يوجد حساب بنفس البريد بطريقة تسجيل دخول مختلفة. راجع حسابات Firebase."
+  };
+
+  return errors[error.code] ||
+    `حدث خطأ أثناء تسجيل الدخول: ${error.code || error.message}`;
 }
 
+// التحقق من المدير
+function isOwner(user) {
+  return !!(
+    user &&
+    user.email &&
+    user.email.toLowerCase() === OWNER_EMAIL.toLowerCase() &&
+    user.emailVerified
+  );
+}
+
+// حماية النصوص قبل عرضها
 function escapeHTML(value = "") {
   return String(value).replace(/[&<>"']/g, char => ({
     "&": "&amp;",
@@ -75,6 +100,7 @@ function escapeHTML(value = "") {
   })[char]);
 }
 
+// التحقق من الروابط
 function safeURL(value) {
   if (!value) return "";
 
@@ -101,14 +127,15 @@ onAuthStateChanged(auth, async user => {
     return;
   }
 
-  if (user.uid !== OWNER_UID) {
+  if (!isOwner(user)) {
     await signOut(auth);
+
     loginSection.hidden = false;
     dashboardSection.hidden = true;
 
     showMessage(
       loginMessage,
-      "تم تسجيل الدخول، لكن هذا الحساب ليس حساب المدير المعتمد.",
+      "هذا الحساب غير مصرح له بدخول لوحة الإدارة.",
       "error"
     );
 
@@ -118,43 +145,40 @@ onAuthStateChanged(auth, async user => {
   loginSection.hidden = true;
   dashboardSection.hidden = false;
 
-  showMessage(adminMessage, "مرحبًا بك في لوحة الإدارة.", "success");
+  document.getElementById("adminEmail").textContent =
+    `المدير: ${user.email}`;
+
+  showMessage(
+    adminMessage,
+    "مرحبًا بك في لوحة الإدارة.",
+    "success"
+  );
 
   await loadAdminProjects();
 });
 
-// تسجيل الدخول
-loginForm.addEventListener("submit", async event => {
-  event.preventDefault();
+// تسجيل الدخول بجوجل
+googleLoginButton.addEventListener("click", async () => {
+  googleLoginButton.disabled = true;
+  googleLoginButton.textContent = "جارٍ تسجيل الدخول...";
 
-  const email = document.getElementById("email").value.trim();
-  const password = document.getElementById("password").value;
-
-  if (!email || !password) {
-    showMessage(loginMessage, "اكتب البريد الإلكتروني وكلمة المرور.", "error");
-    return;
-  }
-
-  loginButton.disabled = true;
-  loginButton.textContent = "جارٍ تسجيل الدخول...";
-
-  showMessage(loginMessage, "جارٍ الاتصال بـ Firebase...");
+  showMessage(loginMessage, "جارٍ فتح حساب Google...");
 
   try {
-    const result = await signInWithEmailAndPassword(auth, email, password);
+    const result = await signInWithPopup(auth, provider);
 
-    if (result.user.uid !== OWNER_UID) {
+    if (!isOwner(result.user)) {
       await signOut(auth);
 
       showMessage(
         loginMessage,
-        "هذا الحساب صحيح، لكنه ليس حساب المدير المحدد في الموقع.",
+        "هذا الحساب ليس حساب المدير المعتمد. استخدم بريد المدير الصحيح.",
         "error"
       );
     }
 
   } catch (error) {
-    console.error("Firebase Login Error:", error);
+    console.error("Google Login Error:", error);
 
     showMessage(
       loginMessage,
@@ -163,8 +187,9 @@ loginForm.addEventListener("submit", async event => {
     );
 
   } finally {
-    loginButton.disabled = false;
-    loginButton.textContent = "دخول";
+    googleLoginButton.disabled = false;
+    googleLoginButton.textContent =
+      "تسجيل الدخول باستخدام Google";
   }
 });
 
@@ -175,7 +200,12 @@ document.getElementById("logoutButton").addEventListener("click", async () => {
     showMessage(loginMessage, "تم تسجيل الخروج.");
   } catch (error) {
     console.error(error);
-    showMessage(adminMessage, "تعذر تسجيل الخروج.", "error");
+
+    showMessage(
+      adminMessage,
+      "تعذر تسجيل الخروج.",
+      "error"
+    );
   }
 });
 
@@ -183,7 +213,7 @@ document.getElementById("logoutButton").addEventListener("click", async () => {
 projectForm.addEventListener("submit", async event => {
   event.preventDefault();
 
-  if (!isOwner()) {
+  if (!isOwner(currentUser)) {
     showMessage(adminMessage, "ليس لديك صلاحية تنفيذ العملية.", "error");
     return;
   }
@@ -234,13 +264,21 @@ projectForm.addEventListener("submit", async event => {
     if (projectId) {
       await updateDoc(doc(db, "projects", projectId), project);
 
-      showMessage(adminMessage, "تم تعديل المشروع بنجاح.", "success");
+      showMessage(
+        adminMessage,
+        "تم تعديل المشروع بنجاح.",
+        "success"
+      );
     } else {
       project.createdAt = serverTimestamp();
 
       await addDoc(collection(db, "projects"), project);
 
-      showMessage(adminMessage, "تمت إضافة المشروع بنجاح.", "success");
+      showMessage(
+        adminMessage,
+        "تمت إضافة المشروع بنجاح.",
+        "success"
+      );
     }
 
     resetForm();
@@ -251,21 +289,22 @@ projectForm.addEventListener("submit", async event => {
 
     showMessage(
       adminMessage,
-      error.code === "permission-denied"
-        ? "ليس لديك صلاحية الكتابة. راجع قواعد Firestore وUID المدير."
-        : `تعذر حفظ المشروع: ${error.code || error.message}`,
+      `تعذر حفظ المشروع: ${error.code || error.message}`,
       "error"
     );
 
   } finally {
     saveButton.disabled = false;
-    saveButton.textContent = projectId ? "حفظ التعديلات" : "حفظ المشروع";
+    saveButton.textContent =
+      document.getElementById("projectId").value
+        ? "حفظ التعديلات"
+        : "حفظ المشروع";
   }
 });
 
-// تحميل المشاريع في لوحة الإدارة
+// تحميل المشاريع
 async function loadAdminProjects() {
-  if (!isOwner()) return;
+  if (!isOwner(currentUser)) return;
 
   adminProjects.textContent = "جارٍ تحميل المشاريع...";
 
@@ -303,9 +342,11 @@ async function loadAdminProjects() {
       });
 
       card.querySelector(".delete-button").addEventListener("click", async () => {
-        if (!confirm("هل أنت متأكد من حذف هذا المشروع نهائيًا؟")) return;
+        if (!confirm("هل أنت متأكد من حذف هذا المشروع نهائيًا؟")) {
+          return;
+        }
 
-        if (!isOwner()) {
+        if (!isOwner(currentUser)) {
           showMessage(adminMessage, "ليس لديك صلاحية الحذف.", "error");
           return;
         }
@@ -313,7 +354,11 @@ async function loadAdminProjects() {
         try {
           await deleteDoc(doc(db, "projects", projectDoc.id));
 
-          showMessage(adminMessage, "تم حذف المشروع بنجاح.", "success");
+          showMessage(
+            adminMessage,
+            "تم حذف المشروع بنجاح.",
+            "success"
+          );
 
           await loadAdminProjects();
 
@@ -339,9 +384,9 @@ async function loadAdminProjects() {
   }
 }
 
-// وضع بيانات المشروع في النموذج للتعديل
+// وضع بيانات المشروع في النموذج
 function fillForm(id, project) {
-  if (!isOwner()) return;
+  if (!isOwner(currentUser)) return;
 
   document.getElementById("projectId").value = id;
 
@@ -357,19 +402,26 @@ function fillForm(id, project) {
   ];
 
   fields.forEach(field => {
-    document.getElementById(field).value = project[field] ?? "";
+    document.getElementById(field).value =
+      project[field] ?? "";
   });
 
-  document.getElementById("featured").checked = !!project.featured;
+  document.getElementById("featured").checked =
+    !!project.featured;
 
-  document.getElementById("formTitle").textContent = "تعديل المشروع";
-  document.getElementById("saveButton").textContent = "حفظ التعديلات";
-  document.getElementById("cancelEditButton").hidden = false;
+  document.getElementById("formTitle").textContent =
+    "تعديل المشروع";
 
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  saveButton.textContent = "حفظ التعديلات";
+  cancelEditButton.hidden = false;
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth"
+  });
 }
 
-// إعادة النموذج لوضع الإضافة
+// إعادة النموذج
 function resetForm() {
   projectForm.reset();
 
@@ -377,10 +429,12 @@ function resetForm() {
   document.getElementById("order").value = 1;
   document.getElementById("featured").checked = true;
 
-  document.getElementById("formTitle").textContent = "إضافة مشروع جديد";
-  document.getElementById("saveButton").textContent = "حفظ المشروع";
-  document.getElementById("cancelEditButton").hidden = true;
+  document.getElementById("formTitle").textContent =
+    "إضافة مشروع جديد";
+
+  saveButton.textContent = "حفظ المشروع";
+  cancelEditButton.hidden = true;
 }
 
 // إلغاء التعديل
-document.getElementById("cancelEditButton").addEventListener("click", resetForm);
+cancelEditButton.addEventListener("click", resetForm);
