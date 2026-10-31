@@ -21,7 +21,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 
 // ضع بريد حساب Google الخاص بالمدير هنا
-const OWNER_EMAIL = "ضع-بريدك-هنا@gmail.com";
+const OWNER_EMAIL = "kaboo7766@gmail.com";
 
 const provider = new GoogleAuthProvider();
 provider.setCustomParameters({
