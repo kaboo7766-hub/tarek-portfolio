@@ -11,7 +11,7 @@ const owner=()=>!!user&&user.emailVerified&&user.email?.toLowerCase()===ADMIN_EM
 function msg(id,s,error=false){$(id).textContent=s;$(id).classList.toggle("error",error)}
 function valid(f){
   if(!f)return"اختر صورة أولًا";
-  if(!/^image\/(jpeg|png|webp|avif|heic|heif)$/i.test(f.type))return"استخدم صورة JPG أو PNG أو WEBP أو AVIF";
+  if(!f.type.startsWith("image/"))return"اختر ملف صورة مدعومًا في المتصفح";
   if(f.size>50*1024*1024)return"حجم الصورة أكبر من 50 ميجابايت";
   return"";
 }
