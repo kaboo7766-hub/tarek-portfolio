@@ -5,30 +5,93 @@ import{collection,addDoc,getDocs,doc,updateDoc,deleteDoc,getDoc,setDoc,serverTim
 const $=id=>document.getElementById(id),provider=new GoogleAuthProvider();
 provider.setCustomParameters({prompt:"select_account"});
 let user=null,profilePath="",profileFile=null,projectFile=null;
+let editorBitmap=null,editorSource=null,editorKind="",editorObjectUrl="";
 
 const owner=()=>!!user&&user.emailVerified&&user.email?.toLowerCase()===ADMIN_EMAIL.toLowerCase();
 function msg(id,s,error=false){$(id).textContent=s;$(id).classList.toggle("error",error)}
 function valid(f){
   if(!f)return"اختر صورة أولًا";
-  if(!["image/jpeg","image/png","image/webp"].includes(f.type))return"استخدم JPG أو PNG أو WEBP";
-  if(f.size>8*1024*1024)return"حجم الصورة الأصلية أكبر من 8 ميجابايت";
+  if(!/^image\/(jpeg|png|webp|avif|heic|heif)$/i.test(f.type))return"استخدم صورة JPG أو PNG أو WEBP أو AVIF";
+  if(f.size>50*1024*1024)return"حجم الصورة أكبر من 50 ميجابايت";
   return"";
 }
+function aspectValue(){
+  const value=$("cropAspect").value;
+  if(value==="4:5")return 4/5;
+  if(value==="1:1")return 1;
+  if(value==="16:9")return 16/9;
+  return editorBitmap.width/editorBitmap.height;
+}
+function cropRect(){
+  const imageW=editorBitmap.width,imageH=editorBitmap.height,ratio=aspectValue();
+  let w=imageW,h=imageH;
+  if(w/h>ratio)w=h*ratio;else h=w/ratio;
+  const zoom=Number($("cropZoom").value)||1;
+  w/=zoom;h/=zoom;
+  const maxX=Math.max(0,(imageW-w)/2),maxY=Math.max(0,(imageH-h)/2);
+  const px=(Number($("cropX").value)-50)/50,py=(Number($("cropY").value)-50)/50;
+  const cx=imageW/2+px*maxX,cy=imageH/2+py*maxY;
+  return{x:Math.max(0,Math.min(imageW-w,cx-w/2)),y:Math.max(0,Math.min(imageH-h,cy-h/2)),w,h};
+}
+function drawCrop(){
+  if(!editorBitmap)return;
+  const rect=cropRect(),canvas=$("cropCanvas"),ratio=rect.w/rect.h;
+  let width=720,height=Math.round(width/ratio);
+  if(height>720){height=720;width=Math.round(height*ratio)}
+  canvas.width=width;canvas.height=height;
+  const ctx=canvas.getContext("2d",{alpha:false});
+  ctx.fillStyle="#071727";ctx.fillRect(0,0,width,height);
+  ctx.drawImage(editorBitmap,rect.x,rect.y,rect.w,rect.h,0,0,width,height);
+  $("cropZoomValue").textContent=Number($("cropZoom").value).toFixed(1)+"×";
+}
+function closeEditor(){
+  $("imageEditor").hidden=true;
+  editorBitmap?.close?.();editorBitmap=null;
+  if(editorObjectUrl)URL.revokeObjectURL(editorObjectUrl);
+  editorObjectUrl="";
+}
+async function openEditor(file,kind){
+  const error=valid(file);if(error)throw Error(error);
+  editorSource=file;editorKind=kind;
+  editorBitmap=await createImageBitmap(file);
+  $("cropAspect").value=kind==="profile"?"4:5":"16:9";
+  $("cropZoom").value=1;$("cropX").value=50;$("cropY").value=50;
+  $("cropFileInfo").textContent=file.name+" — "+(file.size/1024/1024).toFixed(2)+" ميجابايت";
+  $("imageEditor").hidden=false;drawCrop();
+}
+async function applyCrop(){
+  if(!editorBitmap)return;
+  const rect=cropRect(),canvas=document.createElement("canvas");
+  const ratio=rect.w/rect.h;
+  let width=1800,height=Math.round(width/ratio);
+  if(height>1800){height=1800;width=Math.round(height*ratio)}
+  canvas.width=width;canvas.height=height;
+  canvas.getContext("2d",{alpha:false}).drawImage(editorBitmap,rect.x,rect.y,rect.w,rect.h,0,0,width,height);
+  const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error("تعذر تجهيز الصورة")),"image/webp",.92));
+  const cropped=new File([blob],"portfolio-image.webp",{type:"image/webp"});
+  if(editorKind==="profile"){
+    profileFile=cropped;$("adminProfilePreview").src=URL.createObjectURL(cropped);$("adminProfilePreview").hidden=false;$("adminProfileFallback").hidden=true;
+    msg("profileMessage","تم تجهيز الصورة. اضغط رفع وحفظ الصورة.");
+  }else{
+    projectFile=cropped;$("projectImagePreview").src=URL.createObjectURL(cropped);$("projectImagePreview").hidden=false;$("removeProjectImage").checked=false;
+    msg("adminMessage","تم تجهيز صورة المشروع. احفظ المشروع لاعتمادها.");
+  }
+  closeEditor();
+}
 async function compress(f){
-  const error=valid(f);if(error)throw Error(error);
   const bitmap=await createImageBitmap(f);
-  let scale=Math.min(1,1400/Math.max(bitmap.width,bitmap.height)),blob=null;
-  for(let attempt=0;attempt<4;attempt++){
+  let scale=Math.min(1,1800/Math.max(bitmap.width,bitmap.height)),blob=null;
+  for(let attempt=0;attempt<8;attempt++){
     const canvas=document.createElement("canvas");
     canvas.width=Math.max(1,Math.round(bitmap.width*scale));
     canvas.height=Math.max(1,Math.round(bitmap.height*scale));
-    canvas.getContext("2d").drawImage(bitmap,0,0,canvas.width,canvas.height);
-    blob=await new Promise((resolve,reject)=>canvas.toBlob(x=>x?resolve(x):reject(Error("تعذر ضغط الصورة")),"image/webp",0.78-attempt*0.08));
+    canvas.getContext("2d",{alpha:false}).drawImage(bitmap,0,0,canvas.width,canvas.height);
+    blob=await new Promise((resolve,reject)=>canvas.toBlob(x=>x?resolve(x):reject(Error("تعذر ضغط الصورة")),"image/webp",Math.max(.48,.86-attempt*.06)));
     if(blob.size<=2.5*1024*1024)break;
-    scale*=0.78;
+    scale*=.78;
   }
   bitmap.close?.();
-  if(!blob||blob.size>2.5*1024*1024)throw Error("الصورة كبيرة جدًا بعد الضغط. اختر صورة أصغر.");
+  if(!blob||blob.size>2.5*1024*1024)throw Error("تعذر الوصول بحجم الصورة النهائي إلى الحد المسموح. قلّل القص أو اختر صورة أخرى.");
   return blob;
 }
 async function api(action,payload={}){
@@ -54,7 +117,6 @@ async function upload(file,kind){
   return api("upload",{kind,contentBase64:base64});
 }
 async function del(path){
-  // Ignore legacy Firebase Storage paths; only GitHub-hosted portfolio assets are deleted here.
   if(path&&path.startsWith("uploads/"))try{await api("delete",{path})}catch(error){console.warn("Image cleanup failed:",error)}
 }
 async function loadProfile(){
@@ -108,13 +170,12 @@ onAuthStateChanged(auth,async current=>{
 });
 $("googleLoginButton").onclick=async()=>{try{await signInWithPopup(auth,provider)}catch(error){msg("loginMessage",error.code||error.message,true)}};
 $("logoutButton").onclick=()=>signOut(auth);
-$("profileFile").onchange=event=>{
-  profileFile=event.target.files[0]||null;if(!profileFile)return;
-  const error=valid(profileFile);if(error){msg("profileMessage",error,true);profileFile=null;return}
-  $("adminProfilePreview").src=URL.createObjectURL(profileFile);$("adminProfilePreview").hidden=false;$("adminProfileFallback").hidden=true;
+$("profileFile").onchange=async event=>{
+  const file=event.target.files[0]||null;if(!file)return;
+  try{await openEditor(file,"profile")}catch(error){msg("profileMessage",error.message,true);event.target.value=""}
 };
 $("uploadProfileButton").onclick=async()=>{
-  if(!owner()||!profileFile){msg("profileMessage","اختر صورة صالحة أولًا",true);return}
+  if(!owner()||!profileFile){msg("profileMessage","اختر صورة وجهّزها أولًا",true);return}
   const button=$("uploadProfileButton");button.disabled=true;
   try{
     const result=await upload(profileFile,"profile");
@@ -123,10 +184,9 @@ $("uploadProfileButton").onclick=async()=>{
     msg("profileMessage","تم رفع الصورة وحفظها على GitHub بنجاح");
   }catch(error){msg("profileMessage",error.message,true)}finally{button.disabled=false}
 };
-$("projectImageFile").onchange=event=>{
-  projectFile=event.target.files[0]||null;if(!projectFile)return;
-  const error=valid(projectFile);if(error){msg("adminMessage",error,true);projectFile=null;return}
-  $("projectImagePreview").src=URL.createObjectURL(projectFile);$("projectImagePreview").hidden=false;$("removeProjectImage").checked=false;
+$("projectImageFile").onchange=async event=>{
+  const file=event.target.files[0]||null;if(!file)return;
+  try{await openEditor(file,"project")}catch(error){msg("adminMessage",error.message,true);event.target.value=""}
 };
 $("removeProjectImage").onchange=event=>{
   if(event.target.checked){projectFile=null;$("projectImageFile").value="";$("projectImagePreview").hidden=true}
@@ -162,3 +222,7 @@ $("projectForm").onsubmit=async event=>{
 };
 $("cancelEditButton").onclick=reset;
 $("refreshProjects").onclick=load;
+$("cropAspect").onchange=drawCrop;
+["cropZoom","cropX","cropY"].forEach(id=>$(id).oninput=drawCrop);
+$("applyCropButton").onclick=async()=>{const button=$("applyCropButton");button.disabled=true;try{await applyCrop()}catch(error){msg("cropMessage",error.message,true)}finally{button.disabled=false}};
+$("cancelCropButton").onclick=()=>{closeEditor();if(editorKind==="profile")$("profileFile").value="";else $("projectImageFile").value=""};
