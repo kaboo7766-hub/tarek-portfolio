@@ -1,29 +1,50 @@
 # البورتفوليو الشخصي – طارق محسن
 
-موقع عربي متجاوب مع إطار مضيء متحرك للصورة الشخصية، معرض مشاريع ببطاقات مائلة، ولوحة إدارة Firebase.
+موقع عربي/إنجليزي متجاوب، صورة شخصية بالطول بإطار مضيء متحرك، معرض مشاريع، ولوحة إدارة خاصة.
+
+## الخدمات المستخدمة
+- Firebase Authentication: تسجيل الدخول بحساب Google.
+- Cloud Firestore: بيانات الملف الشخصي والمشاريع.
+- GitHub repository: حفظ ملفات الصور داخل فرع مستقل باسم `portfolio-assets`.
+- Vercel Functions: واجهة آمنة لرفع الصور وحذفها إلى GitHub.
+
+**لم يعد المشروع يستخدم Firebase Storage**، وبالتالي لا يحتاج إلى تفعيل Cloud Storage أو ربط خطة Blaze من أجل الصور. تبقى حصص GitHub وVercel المجانية وشروطهما مطبقة؛ GitHub ليس خدمة CDN مخصصة للصور ولا توجد ضمانة أن استخدامًا كثيفًا سيظل بلا قيود.
+
+## إعداد GitHub للصور
+1. تم إنشاء فرع `portfolio-assets` ليكون مخصصًا لملفات الصور فقط.
+2. أنشئ GitHub Fine-grained Personal Access Token من إعدادات GitHub.
+3. اختر المستودع `kaboo7766-hub/tarek-portfolio) فقط.
+4. امنح صلاحية **Contents: Read and write** فقط، وحدد تاريخ انتهاء مناسبًا.
+5. لا ترسل الرمز في المحادثة ولا تضعه في أي ملف بالمستودع.
+
+## إعداد Vercel
+من Project Settings > Environment Variables أضف:
+- `GITHUB_TOKEN`: الرمز الذي أنشأته، بنوع Sensitive/Encrypted، إلى Preview وProduction وDevelopment حسب الحاجة.
+- `GITHUB_ASSETS_BRANCH`: القيمة `portfolio-assets` إلى نفس البيئات.
+
+بعد إضافة المتغيرات، أعد نشر معاينة الفرع. لا تضع رمز GitHub في `admin.js` أو أي ملف يصل إلى المتصفح.
 
 ## إعداد Firebase
-1. المشروع المستخدم: tarek-portfolio-fa40d.
-2. فعّل Google من Authentication > Sign-in method.
-3. تأكد أن حساب المدير هو kaboo7766@gmail.com ومفعّل وموثّق.
-4. أنشئ Cloud Firestore وCloud Storage bucket الافتراضي.
-5. انشر firestore.rules وstorage.rules.
-6. أضف نطاق موقعك الفعلي إلى Authentication > Settings > Authorized domains.
-7. افتح /admin.html وسجّل الدخول بحساب المدير، ثم ارفع الصورة الشخصية وأضف المشاريع.
+1. المشروع: `tarek-portfolio-fa40d`.
+2. فعّل Google في Authentication > Sign-in method.
+3. تأكد من أن حساب المدير `kaboo7766@gmail.com` موثّق البريد.
+4. أنشئ Cloud Firestore وانشر `firestore.rules`.
+5. أضف نطاق الموقع إلى Authentication > Settings > Authorized domains.
+6. افتح `/admin.html)، سجّل الدخول بحساب المدير، ثم أعد رفع الصورة الشخصية وصور المشاريع القديمة إن لم تعد تظهر.
 
-## النشر
-بعد تثبيت Firebase CLI وتسجيل الدخول:
+## آلية حماية الصور
+- كل طلب رفع/حذف يرسل Firebase ID token.
+- دالة Vercel تتحقق من الرمز مباشرة مع Firebase Identity Toolkit، ثم تتحقق من البريد الموثّق المطابق لحساب المدير.
+- GitHub token محفوظ في إعدادات Vercel فقط.
+- الخادم يقبل صور WebP فقط، بحجم أقصى 2.5 ميجابايت بعد الضغط، ويولّد مسار الملف بنفسه.
+- لا يسمح API بحذف إلا ملفات الصور ضمن مجلدات `uploads/profile` و`uploads/projects`.
 
-    firebase use tarek-portfolio-fa40d
-    firebase deploy --only firestore:rules,storage
+## الاختبار
+بعد إضافة متغيرات Vercel وإعادة النشر:
+1. افتح `/admin.html) وسجّل الدخول بحساب المدير.
+2. ارفع صورة شخصية طولية، ثم افتح الصفحة الرئيسية من نافذة أخرى.
+3. أضف مشروعًا بصورة، ثم جرّب التعديل والحذف.
+4. جرّب فتح الموقع من الهاتف.
+5. جرّب استدعاء API دون تسجيل دخول؛ يجب أن يرفض الطلب.
 
-يمكن الاستمرار في نشر الواجهة من GitHub عبر Vercel. Firebase للمصادقة والبيانات والصور. ويمكن استخدام Firebase Hosting اختياريًا عبر firebase deploy --only hosting.
-
-## تنبيه فوترة مهم
-Cloud Storage for Firebase يتطلب خطة Blaze مرتبطة بحساب فوترة منذ 3 فبراير 2026، حتى لو كان الاستخدام ضمن الحصة المجانية. قد تظهر رسوم عند تجاوز الحصة. لا يقوم هذا المشروع بتفعيل الفوترة تلقائيًا. راجع وثائق Firebase واضبط تنبيهات الميزانية قبل تفعيل Storage.
-
-## الحماية
-قراءة المشاريع والصورة الشخصية عامة. التعديل والحذف ورفع الصور محصور بحساب Google المعتمد والبريد الموثّق. لا تضع كلمات مرور أو ملفات Service Account في المستودع.
-
-## الاختبار بعد الإعداد
-اختبر تسجيل الدخول، رفع صورة شخصية، إضافة مشروع بصورة، التعديل والحذف، ثم افتح الموقع من جهاز آخر للتأكد من ظهور الصور والبيانات السحابية.
+ملاحظة: الصور القديمة المخزنة سابقًا في Firebase Storage لا تنتقل تلقائيًا إلى GitHub. أعد رفعها من لوحة الإدارة بعد نشر التحديث.
