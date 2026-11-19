@@ -17,15 +17,14 @@ function valid(f){
 async function compress(f){
   const error=valid(f);if(error)throw Error(error);
   const bitmap=await createImageBitmap(f);
-  let scale=Math.min(1,1400/Math.max(bitmap.width,bitmap.height)),blob=null;
-  for(let attempt=0;attempt<4;attempt++){
+  let scale=1,blob=null;
+  for(let attempt=0;attempt<6;attempt++){
     const canvas=document.createElement("canvas");
     canvas.width=Math.max(1,Math.round(bitmap.width*scale));
     canvas.height=Math.max(1,Math.round(bitmap.height*scale));
     canvas.getContext("2d").drawImage(bitmap,0,0,canvas.width,canvas.height);
-    blob=await new Promise((resolve,reject)=>canvas.toBlob(x=>x?resolve(x):reject(Error("تعذر ضغط الصورة")),"image/webp",0.78-attempt*0.08));
+    blob=await new Promise((resolve,reject)=>canvas.toBlob(x=>x?resolve(x):reject(Error("تعذر ضغط الصورة")),"image/webp",Math.max(0.32,0.78-attempt*0.09)));
     if(blob.size<=2.5*1024*1024)break;
-    scale*=0.78;
   }
   bitmap.close?.();
   if(!blob||blob.size>2.5*1024*1024)throw Error("الصورة كبيرة جدًا بعد الضغط. اختر صورة أصغر.");
