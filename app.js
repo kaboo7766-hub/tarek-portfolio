@@ -1,54 +1,7 @@
-import { db } from "./firebase-config.js";
-import { collection, getDocs, query, where, orderBy } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
-
-const container = document.getElementById("projectsContainer");
-let currentLanguage = "ar";
-
-function escapeHTML(value = "") {
-  return String(value).replace(/[&<>"']/g, char => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[char]);
-}
-function safeURL(value) {
-  try { const url = new URL(value); return ["http:", "https:"].includes(url.protocol) ? url.href : ""; }
-  catch { return ""; }
-}
-
-async function loadProjects() {
-  container.textContent = currentLanguage === "en" ? "Loading projects..." : "جاري تحميل المشاريع...";
-  try {
-    const projectsQuery = query(collection(db, "projects"), where("featured", "==", true), orderBy("order", "asc"));
-    const snapshot = await getDocs(projectsQuery);
-    if (snapshot.empty) {
-      container.textContent = currentLanguage === "en" ? "No published projects yet." : "لا توجد مشاريع منشورة حاليًا.";
-      return;
-    }
-    container.replaceChildren();
-    snapshot.forEach(projectDoc => {
-      const project = projectDoc.data();
-      const title = currentLanguage === "en" ? (project.titleEn || project.titleAr) : project.titleAr;
-      const description = currentLanguage === "en" ? (project.descriptionEn || project.descriptionAr) : project.descriptionAr;
-      const image = safeURL(project.imageUrl), live = safeURL(project.liveUrl), github = safeURL(project.githubUrl);
-      const card = document.createElement("article");
-      card.className = "project-card";
-      card.innerHTML = `${image ? `<img class="project-image" src="${escapeHTML(image)}" alt="${escapeHTML(title || "Project")}" loading="lazy">` : ""}<h3>${escapeHTML(title || "Project")}</h3><p>${escapeHTML(description || "")}</p><div class="project-links">${live ? `<a href="${escapeHTML(live)}" target="_blank" rel="noopener noreferrer">${currentLanguage === "en" ? "Visit project" : "زيارة المشروع"}</a>` : ""}${github ? `<a href="${escapeHTML(github)}" target="_blank" rel="noopener noreferrer">GitHub</a>` : ""}</div>`;
-      container.appendChild(card);
-    });
-  } catch (error) {
-    console.error("Projects loading error:", error);
-    container.textContent = currentLanguage === "en" ? "Could not load projects. Check Firebase configuration and Firestore rules." : "تعذر تحميل المشاريع. تحقق من إعدادات Firebase وقواعد Firestore.";
-  }
-}
-
-document.getElementById("currentYear").textContent = new Date().getFullYear();
-document.getElementById("themeToggle").addEventListener("click", () => {
-  document.body.classList.toggle("light");
-  document.getElementById("themeToggle").textContent = document.body.classList.contains("light") ? "🌙" : "☀️";
-});
-document.getElementById("languageToggle").addEventListener("click", () => {
-  currentLanguage = currentLanguage === "ar" ? "en" : "ar";
-  document.documentElement.lang = currentLanguage;
-  document.documentElement.dir = currentLanguage === "ar" ? "rtl" : "ltr";
-  document.querySelectorAll("[data-ar][data-en]").forEach(element => { element.textContent = element.dataset[currentLanguage]; });
-  document.getElementById("languageToggle").textContent = currentLanguage === "ar" ? "EN" : "عربي";
-  loadProjects();
-});
-loadProjects();
+import{db}from"./firebase-config.js";import{collection,doc,getDoc,getDocs,query,where}from"https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+const $=id=>document.getElementById(id);let lang="ar";
+function safe(v){try{const u=new URL(v);return["https:","http:"].includes(u.protocol)?u.href:""}catch{return""}}
+function makeLink(url,label){const u=safe(url);if(!u)return null;const a=document.createElement("a");a.href=u;a.textContent=label;a.target="_blank";a.rel="noopener noreferrer";return a}
+async function loadProfile(){try{const s=await getDoc(doc(db,"settings","profile"));const u=s.exists()?safe(s.data().photoUrl):"";if(u){$("profilePhoto").src=u;$("profilePhoto").hidden=false;$("profileFallback").hidden=true}}catch(e){console.warn(e)}}
+async function loadProjects(){const root=$("projectsContainer");root.replaceChildren();const loading=document.createElement("div");loading.className="loading";loading.textContent=lang==="ar"?"جاري تحميل المشاريع...":"Loading projects...";root.append(loading);try{const s=await getDocs(query(collection(db,"projects"),where("featured","==",true)));const rows=s.docs.map(d=>d.data()).sort((a,b)=>(a.order||0)-(b.order||0));root.replaceChildren();if(!rows.length){const x=document.createElement("div");x.className="empty";x.textContent=lang==="ar"?"ستظهر المشاريع هنا قريبًا.":"Projects will appear here soon.";root.append(x);return}rows.forEach(p=>{const card=document.createElement("article");card.className="project-card";const cover=document.createElement("div");cover.className="project-image-wrap";const image=safe(p.imageUrl);if(image){const img=document.createElement("img");img.className="project-image";img.src=image;img.alt=p.titleAr||"Project";img.loading="lazy";cover.append(img)}else{const ph=document.createElement("div");ph.className="project-placeholder";ph.textContent="✳";cover.append(ph)}const body=document.createElement("div");body.className="project-body";const cat=document.createElement("small");cat.className="project-category";cat.textContent=p.category||"PROJECT";const h=document.createElement("h3");h.textContent=lang==="ar"?(p.titleAr||"مشروع"):(p.titleEn||p.titleAr||"Project");const desc=document.createElement("p");desc.textContent=lang==="ar"?(p.descriptionAr||""):(p.descriptionEn||p.descriptionAr||"");const links=document.createElement("div");links.className="project-links";const live=makeLink(p.liveUrl,lang==="ar"?"عرض المشروع ↗":"View project ↗"),git=makeLink(p.githubUrl,"GitHub ↗");if(live)links.append(live);if(git)links.append(git);body.append(cat,h,desc,links);card.append(cover,body);root.append(card)})}catch(e){console.error(e);root.replaceChildren();const x=document.createElement("div");x.className="empty";x.textContent=lang==="ar"?"تعذر تحميل المشاريع. راجع إعدادات Firebase.":"Could not load projects. Check Firebase setup.";root.append(x)}}
+$("year").textContent=new Date().getFullYear();$("themeToggle").onclick=()=>document.body.classList.toggle("light");$("languageToggle").onclick=()=>{lang=lang==="ar"?"en":"ar";document.documentElement.lang=lang;document.documentElement.dir=lang==="ar"?"rtl":"ltr";$("languageToggle").textContent=lang==="ar"?"EN":"عربي";document.querySelectorAll("[data-ar][data-en]").forEach(e=>e.textContent=e.dataset[lang]);loadProjects()};loadProfile();loadProjects();
